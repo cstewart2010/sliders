@@ -23,8 +23,7 @@
             <input class="form-control" type="number" id="step-value" min="1" value="1">
             <button class="btn btn-primary" id="add-button">Add new slider</button>
         </div>
-        <div class="mb-5" id="sliders">
-        </div>
+        <div class="mb-5" id="sliders"></div>
         <button class="btn btn-primary" id="load-button">Load sliders</button>
         <button class="btn btn-primary" id="save-button">Save sliders</button>
         <button class="btn btn-danger" id="delete-button">Delete sliders</button>
@@ -33,308 +32,306 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>
     <script>
-        /**
-         * @type {{[key: string]: { options: CreateOptions, currentValue: number }}}
-         */
-        let sliderCollection = {}
-        const onload = () => {
-            document.querySelector("#group-title").value = "";
+        window.addEventListener('load', () => {
+            /**
+             * @typedef CreateOptions
+             * @prop {string} textInput
+             * @prop {number} minInput
+             * @prop {number} maxInput
+             * @prop {number} stepInput
+             */
+
+            /**
+             * @type {{[key: string]: { options: CreateOptions, currentValue: number }}}
+             */
+            let sliderCollection = {}
+
+            /**
+             * @param {Event} e 
+             * @param {HTMLInputElement} input 
+             */
+            const cleanInput = (e, input) => {
+                if (!e.target.value){
+                    input.value = Number(e.target.min || 0);
+                }
+            }
+
+            const groupTitleInput = document.querySelector("#group-title");
+            groupTitleInput.value = "";
             const titleInput = document.querySelector("#slider-title");
             titleInput.value = "";
             const minInput = document.querySelector("#min-value");
             minInput.value = 0;
-            minInput.oninput = e => cleanInput(e, minInput.id);
+            minInput.oninput = e => cleanInput(e, minInput);
             const maxInput = document.querySelector("#max-value");
             maxInput.value = 0;
-            maxInput.oninput = e => cleanInput(e, maxInput.id);
+            maxInput.oninput = e => cleanInput(e, maxInput);
             const stepInput = document.querySelector("#step-value");
             stepInput.value = 1;
-            stepInput.oninput = e => cleanInput(e, stepInput.id);
-            document.querySelector("#add-button").onclick = () => addButton(titleInput, minInput, maxInput, stepInput);
+            stepInput.oninput = e => cleanInput(e, stepInput);
+            const saveSection = document.querySelector("#saves");
+            const errorSection = document.querySelector("#errors");
+            const sliders = document.querySelector("#sliders");
+
+            /**
+             * @param {HTMLLabelElement} label 
+             * @param {HTMLInputElement} range
+             * @param {string} textInput
+             */
+            const onRangeDelete = (label, range, textInput) => {
+                sliders.removeChild(label);
+                sliders.removeChild(range);
+                delete sliderCollection[textInput];
+            };
+
+            /**
+             * @param {HTMLLabelElement} label 
+             * @param {HTMLInputElement} range
+             * @param {string} textInput
+             */
+            const getRangeDeleteButton = (label, range, textInput) => {
+                const deleteButton = document.createElement("button");
+                deleteButton.innerText = "Remove";
+                deleteButton.classList.add("btn", "btn-danger")
+                deleteButton.onclick = () => onRangeDelete(label, range, textInput);
+                return deleteButton;
+            };
+
+            /**
+             * @param {HTMLSpanElement} textSpan 
+             * @param {CreateOptions} options 
+             * @param {number} value 
+             */
+            const updateSpan = (textSpan, options, value) => {
+                textSpan.innerHTML = null;
+                const text = `${options.textInput} ${value}`
+                if (value == options.maxInput){
+                    const strong = document.createElement("strong");
+                    strong.textContent = text;
+                    textSpan.appendChild(strong);
+                }
+                else {
+                    textSpan.textContent = text;
+                }
+            }
+
+            /**
+             * @param {Event} e 
+             * @param {HTMLSpanElement} textSpan 
+             * @param {CreateOptions} options 
+             */
+            const onRangeChange = (e, textSpan, options) => {
+                sliderCollection[options.textInput].currentValue = e.target.value; 
+                updateSpan(textSpan, options, e.target.value);
+            }
+
+            /**
+             * @param {HTMLSpanElement} textSpan 
+             * @param {CreateOptions} options 
+             * @param {string} id 
+             * @param {number} currentValue 
+             */
+            const getRangeInput = (textSpan, options, id, currentValue) => {
+                const range = document.createElement("input");
+                range.type = "range";
+                range.classList.add("form-range");
+                range.id = id;
+                range.min = options.minInput;
+                range.value = currentValue;
+                range.max = options.maxInput;
+                range.step = options.stepInput;
+                range.onchange = e => onRangeChange(e, textSpan, options);
+
+                return range;
+            }
+
+            /**
+             * @param {CreateOptions} options 
+             * @param {number} currentValue 
+             */
+            const getSpanElement = (options, currentValue) => {
+                const textSpan = document.createElement("span");
+                textSpan.classList.add("me-2");
+                updateSpan(textSpan, options, currentValue)
+                return textSpan;
+            }
+
+            /**
+             * @param {string} id 
+             */
+            const getLabelElement = (id) => {
+                const label = document.createElement("label");
+                label.htmlFor = id;
+                label.classList.add("form-label");
+                return label;
+            }
+
+            /**
+             * @param {CreateOptions} options 
+             * @param {number} currentValue
+             */
+            const addNewslider = (options, currentValue) => {
+                if (currentValue < options.minInput){
+                    currentValue = options.minInput
+                }
+                if (currentValue > options.maxInput){
+                    currentValue = options.maxInput
+                }
+                const id = `slider-${Date.now()}`
+                const label = getLabelElement(id);
+                const textSpan = getSpanElement(options, currentValue);
+                label.appendChild(textSpan);
+                const range = getRangeInput(textSpan, options, id, currentValue);
+                const deleteButton = getRangeDeleteButton(label, range, options.textInput);
+                label.appendChild(deleteButton);
+                sliders.appendChild(label);
+                sliders.appendChild(range);
+            }
+
+            /**
+             * @param {CreateOptions} options 
+             * @param {boolean} onInitialLoad 
+             */
+            const validateCreateOptions = (options, onInitialLoad = false) => {
+                const errorCollection = [];
+                if (sliderCollection[options.textInput] && onInitialLoad){
+                    errorCollection.push("Title must be unique");
+                }
+                if (!options.textInput){
+                    errorCollection.push("Title must not be empty");
+                }
+                if (options.minInput >= options.maxInput){
+                    errorCollection.push(`Minimum input must be less than ${options.maxInput}`);
+                }
+                if (options.maxInput <= options.minInput){
+                    errorCollection.push(`Maximum input must be greater than ${options.minInput}`);
+                }
+                if (options.stepInput <= 0 || options.stepInput > options.maxInput){
+                    errorCollection.push(`Step input must be between 0 (exclusive) and ${options.maxInput} (inclusive)`);
+                }
+                if (errorCollection.length){
+                    for (const error of errorCollection){
+                        const li = document.createElement("li");
+                        li.textContent = error;
+                        errorSection.appendChild(li);
+                    }
+
+                    return false;
+                }
+
+                return true;
+            }
+            
+            const resetErrorsAndSaves = () => {
+                errorSection.innerHTML = null;
+                saveSection.innerHTML = null;
+            }
+
+            /**
+             * @param {string} key
+             */
+            const onDeleteClick = (key) => {
+                localStorage.removeItem(key);
+                saveSection.innerHTML = null;
+            }
+
+            const deleteSliders = () => {
+                resetErrorsAndSaves();
+                for (var i = 0; i < localStorage.length; i++){
+                    const key = localStorage.key(i);
+                    const li = document.createElement("li");
+                    const button = document.createElement("button");
+                    button.textContent = key;
+                    button.classList.add("btn", "btn-danger", "my-1");
+                    button.onclick = () => onDeleteClick(key);
+                    li.appendChild(button);
+                    saveSection.appendChild(li);
+                }
+            }
+
+            /**
+             * @param {Element} sliders 
+             */
+            const onLoadClick = (saveFile) => {
+                sliders.innerHTML = null;
+                groupTitleInput.value = saveFile;
+                const sliderCollectionText = localStorage.getItem(saveFile);
+                sliderCollection = JSON.parse(sliderCollectionText);
+                for (const slider of Object.keys(sliderCollection)){
+                    if (validateCreateOptions(sliderCollection[slider].options)){
+                        addNewslider(sliderCollection[slider].options, sliderCollection[slider].currentValue)
+                    }
+                }
+                saveSection.innerHTML = null;
+            }
+
+            const loadSliders = () => {
+                resetErrorsAndSaves();
+                for (var i = 0; i < localStorage.length; i++){
+                    const saveFile = localStorage.key(i);
+                    const li = document.createElement("li");
+                    const button = document.createElement("button");
+                    button.textContent = saveFile;
+                    button.classList.add("btn", "btn-primary", "my-1");
+                    button.onclick = () => onLoadClick(saveFile)
+                    li.appendChild(button);
+                    saveSection.appendChild(li);
+                }
+            }
+
+            /**
+             * @param {string?} title 
+             */
+            const validateSaveRequest = (title) => {
+                const errorCollection = [];
+                if (!title){
+                    errorCollection.push("Group title must not be empty");
+                }
+                if (!Object.keys(sliderCollection).length){
+                    errorCollection.push("Slider collection must not be empty");
+                }
+                if (errorCollection.length){
+                    for (const error of errorCollection){
+                        const li = document.createElement("li");
+                        li.textContent = error;
+                        errorSection.appendChild(li);
+                    }
+                    return false;
+                }
+
+                return true;
+            }
+
+            const saveSliders = () => {
+                const title = groupTitleInput.value;
+                resetErrorsAndSaves();
+                if (validateSaveRequest(title)){
+                    localStorage.setItem(title, JSON.stringify(sliderCollection));
+                }
+            }
+
+            const addButton = () => {
+                resetErrorsAndSaves();
+                const options = {
+                    textInput: titleInput.value,
+                    minInput: Number(minInput.value),
+                    maxInput: Number(maxInput.value),
+                    stepInput: Number(stepInput.value)
+                };
+                if (validateCreateOptions(options, true)){
+                    sliderCollection[options.textInput] = {
+                        options,
+                        currentValue: options.minInput
+                    }
+                    addNewslider(options, options.minInput)
+                }
+            }
+            
+            document.querySelector("#add-button").onclick = addButton;
             document.querySelector("#load-button").onclick = loadSliders;
             document.querySelector("#save-button").onclick = saveSliders;
             document.querySelector("#delete-button").onclick = deleteSliders;
-        }
-
-        window.addEventListener('load', onload);
-
-        /**
-         * @param {Event} e 
-         * @param {string} id 
-         */
-        const cleanInput = (e, id) => {
-            if (!e.target.value){
-                document.querySelector(`#${id}`).value = Number(e.target.min || 0);
-            }
-        }
-
-        /**
-         * @param {Element} titleInput 
-         * @param {Element} minInput 
-         * @param {Element} maxInput 
-         * @param {Element} stepInput 
-         */
-        const addButton = (titleInput, minInput, maxInput, stepInput) => {
-            const [errorSection] = getErrorsAndSaves();
-            const options = {
-                textInput: titleInput.value,
-                minInput: Number(minInput.value),
-                maxInput: Number(maxInput.value),
-                stepInput: Number(stepInput.value)
-            };
-            if (validateCreateOptions(options, errorSection, true)){
-                sliderCollection[options.textInput] = {
-                    options,
-                    currentValue: options.minInput
-                }
-                addNewslider(options, options.minInput)
-            }
-        }
-
-        const saveSliders = () => {
-            const title = document.querySelector("#group-title").value;
-            const [errorSection] = getErrorsAndSaves();
-            if (validateSaveRequest(title, errorSection)){
-                localStorage.setItem(title, JSON.stringify(sliderCollection, ));
-            }
-        }
-
-        /**
-         * @param {string?} title 
-         * @param {Element} errorSection 
-         */
-        const validateSaveRequest = (title, errorSection) => {
-            const errorCollection = [];
-            if (!title){
-                errorCollection.push("Group title must not be empty");
-            }
-            if (!Object.keys(sliderCollection).length){
-                errorCollection.push("Slider collection must not be empty");
-            }
-            if (errorCollection.length){
-                for (const error of errorCollection){
-                    const li = document.createElement("li");
-                    li.textContent = error;
-                    errorSection.appendChild(li);
-                }
-                return false;
-            }
-
-            return true;
-        }
-
-        const loadSliders = () => {
-            const [errorSection, saveSecion] = getErrorsAndSaves();
-            const sliders = document.querySelector("#sliders");
-            for (var i = 0; i < localStorage.length; i++){
-                const saveFile = localStorage.key(i);
-                const li = document.createElement("li");
-                const button = document.createElement("button");
-                button.textContent = saveFile;
-                button.classList.add("btn", "btn-primary", "my-1");
-                button.onclick = () => onLoadClick(sliders, saveFile, saveSecion, errorSection)
-                li.appendChild(button);
-                saveSecion.appendChild(li);
-            }
-        }
-
-        /**
-         * @param {Element} sliders 
-         * @param {string} saveFile 
-         * @param {Element} saveSection 
-         * @param {Element} errorSection 
-         */
-        const onLoadClick = (sliders, saveFile, saveSection, errorSection) => {
-            sliders.innerHTML = null;
-            document.querySelector("#group-title").value = saveFile;
-            const sliderCollectionText = localStorage.getItem(saveFile);
-            sliderCollection = JSON.parse(sliderCollectionText);
-            for (const slider of Object.keys(sliderCollection)){
-                if (validateCreateOptions(sliderCollection[slider].options, errorSection)){
-                    addNewslider(sliderCollection[slider].options, sliderCollection[slider].currentValue)
-                }
-            }
-            saveSection.innerHTML = null;
-        }
-
-        const deleteSliders = () => {
-            const [errors, saves] = getErrorsAndSaves();
-            for (var i = 0; i < localStorage.length; i++){
-                const key = localStorage.key(i);
-                const li = document.createElement("li");
-                const button = document.createElement("button");
-                button.textContent = key;
-                button.classList.add("btn", "btn-danger", "my-1");
-                button.onclick = () => localStorage.removeItem(key);
-                li.appendChild(button);
-                saves.appendChild(li);
-            }
-        }
-
-        const getErrorsAndSaves = () => {
-            const saves = document.querySelector("#saves");
-            const errors = document.querySelector("#errors");
-            errors.innerHTML = null;
-            saves.innerHTML = null;
-            return [errors, saves]
-        }
-
-        /**
-         * @typedef CreateOptions
-         * @prop {string} textInput
-         * @prop {number} minInput
-         * @prop {number} maxInput
-         * @prop {number} stepInput
-         */
-
-        /**
-         * @param {CreateOptions} options 
-         * @param {Element} errors 
-         * @returns {boolean}
-         */
-        const validateCreateOptions = (options, errors, onInitialLoad = false) => {
-            const errorCollection = [];
-            if (sliderCollection[options.textInput] && onInitialLoad){
-                errorCollection.push("Title must be unique");
-            }
-            if (!options.textInput){
-                errorCollection.push("Title must not be empty");
-            }
-            if (options.minInput >= options.maxInput){
-                errorCollection.push(`Minimum input must be less than ${options.maxInput}`);
-            }
-            if (options.maxInput <= options.minInput){
-                errorCollection.push(`Maximum input must be greater than ${options.minInput}`);
-            }
-            if (options.stepInput <= 0 || options.stepInput > options.maxInput){
-                errorCollection.push(`Step input must be between 0 (exclusive) and ${options.maxInput} (inclusive)`);
-            }
-            if (errorCollection.length){
-                for (const error of errorCollection){
-                    const li = document.createElement("li");
-                    li.textContent = error;
-                    errors.appendChild(li);
-                }
-
-                return false;
-            }
-
-            return true;
-        }
-        
-        /**
-         * @param {CreateOptions} options 
-         * @param {number} currentValue
-         */
-        const addNewslider = (options, currentValue) => {
-            if (currentValue < options.minInput){
-                currentValue = options.minInput
-            }
-            if (currentValue > options.maxInput){
-                currentValue = options.maxInput
-            }
-            const sliders = document.querySelector("#sliders");
-            const id = `slider-${sliders.querySelectorAll("input").length}`
-            const label = getLabelElement(id);
-            const textSpan = getSpanElement(options, currentValue);
-            label.appendChild(textSpan);
-            const range = getRangeInput(textSpan, options, id, currentValue);
-            const deleteButton = getRangeDeleteButton(label, range, options.textInput);
-            label.appendChild(deleteButton);
-            sliders.appendChild(label);
-            sliders.appendChild(range);
-        }
-
-        const getLabelElement = (id) => {
-            const label = document.createElement("label");
-            label.id = `${id}-label`;
-            label.htmlFor = id;
-            label.classList.add("form-label");
-            return label;
-        }
-
-        /**
-         * @param {CreateOptions} options 
-         * @param {number} currentValue 
-         */
-        const getSpanElement = (options, currentValue) => {
-            const textSpan = document.createElement("span");
-            textSpan.classList.add("me-2");
-            updateSpan(textSpan, options, currentValue)
-            return textSpan;
-        }
-        
-        /**
-         * @param {HTMLSpanElement} textSpan 
-         * @param {CreateOptions} options 
-         * @param {string} id 
-         * @param {number} currentValue 
-         */
-        const getRangeInput = (textSpan, options, id, currentValue) => {
-            const range = document.createElement("input");
-            range.type = "range";
-            range.classList.add("form-range");
-            range.id = id;
-            range.min = options.minInput;
-            range.value = currentValue;
-            range.max = options.maxInput;
-            range.step = options.stepInput;
-            range.onchange = e => onRangeChange(e, textSpan, options);
-
-            return range;
-        }
-
-        /**
-         * @param {Event} e 
-         * @param {HTMLSpanElement} textSpan 
-         * @param {CreateOptions} options 
-         */
-        const onRangeChange = (e, textSpan, options) => {
-            sliderCollection[options.textInput].currentValue = e.target.value; 
-            updateSpan(textSpan, options, e.target.value);
-        }
-
-        /**
-         * @param {HTMLSpanElement} textSpan 
-         * @param {CreateOptions} options 
-         * @param {number} value 
-         */
-        const updateSpan = (textSpan, options, value) => {
-            textSpan.innerHTML = null;
-            const text = `${options.textInput} ${value}`
-            if (value == options.maxInput){
-                const strong = document.createElement("strong");
-                strong.textContent = text;
-                textSpan.appendChild(strong);
-            }
-            else {
-                textSpan.textContent = text;
-            }
-        }
-
-        /**
-         * @param {HTMLLabelElement} label 
-         * @param {HTMLInputElement} range
-         * @param {string} textInput
-         */
-        const getRangeDeleteButton = (label, range, textInput) => {
-            const deleteButton = document.createElement("button");
-            deleteButton.innerText = "Remove";
-            deleteButton.classList.add("btn", "btn-danger")
-            deleteButton.onclick = () => onRangeDelete(label, range, textInput);
-            return deleteButton;
-        };
-
-        /**
-         * @param {HTMLLabelElement} label 
-         * @param {HTMLInputElement} range
-         * @param {string} textInput
-         */
-        const onRangeDelete = (label, range, textInput) => {
-            sliders.removeChild(label);
-            sliders.removeChild(range);
-            delete sliderCollection[textInput];
-        };
+        });
     </script>
 </body>
 </html>
